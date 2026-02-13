@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Iterable, Sequence
 
 import pandas as pd
@@ -67,21 +67,40 @@ class YFinanceSource:
     def stream_live(self, symbols: Sequence[str]) -> Iterable[PriceBar]:
         raise NotImplementedError("Live streaming not supported via yfinance")
 
+    @staticmethod
+    def _coerce_float(value: object) -> float | None:
+        if value is None:
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
     def fetch_quotes(self, symbols: Sequence[str]) -> Iterable[Quote]:
         for symbol in symbols:
             ticker = yf.Ticker(symbol)
             try:
                 info = ticker.fast_info
-                bid = info.get("bid")
-                ask = info.get("ask")
-                last_price = info.get("last_price")
+                bid = self._coerce_float(info.get("bid"))
+                ask = self._coerce_float(info.get("ask"))
+                last_price = self._coerce_float(info.get("last_price"))
             except Exception:
                 continue
 
-            # If bid/ask missing, fall back to last price on both sides
-            bid_val = float(bid) if bid is not None else float(last_price)
-            ask_val = float(ask) if ask is not None else float(last_price)
-            ts = datetime.utcnow()
+            if bid is None and ask is None and last_price is None:
+                continue
+
+            # Fill missing sides with last trade when available.
+            bid_val = bid if bid is not None else last_price
+            ask_val = ask if ask is not None else last_price
+            if bid_val is None:
+                bid_val = ask_val
+            if ask_val is None:
+                ask_val = bid_val
+            if bid_val is None or ask_val is None:
+                continue
+
+            ts = datetime.now(timezone.utc)
             yield Quote(
                 symbol=symbol,
                 timestamp=ts,

@@ -3,9 +3,12 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 import pandas as pd
+import pytest
 
 from trading_app.data.schemas import NewsItem, PriceBar, Quote
 from trading_app.data.storage.parquet_store import ParquetDataStore
+
+pytestmark = pytest.mark.unit
 
 
 def _bar(symbol: str, ts: datetime, close: float) -> PriceBar:

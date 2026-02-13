@@ -3,9 +3,13 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Iterable, Sequence
 
+import pytest
+
 from trading_app.data.pipeline import DataPipeline
 from trading_app.data.schemas import NewsItem, PriceBar, Quote
 from trading_app.data.storage.base import DataStore
+
+pytestmark = pytest.mark.unit
 
 
 class FakeMarketSource:

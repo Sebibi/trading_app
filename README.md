@@ -32,3 +32,23 @@ A typed front-end framework such as **Next.js (React + TypeScript)** or **Svelte
 1. Create and activate the virtual environment (already present at `.venv` if desired).
 2. Install dev dependencies with uv: `uv venv .venv && source .venv/bin/activate && uv sync --group dev`.
 3. Fill in remaining implementations for data sources, storage, strategies, and APIs following the scaffolding above.
+
+## CLI workflows
+- Ingest historical bars into local parquet storage:
+  - `python main.py ingest-history AAPL MSFT --store-path data --start 2024-01-01 --end 2024-02-01`
+- Show latest stored bar(s) for one or more symbols:
+  - `python main.py show-latest-prices AAPL MSFT --store-path data --limit 1`
+- Backtest dry-run (input/data check only for now):
+  - `python main.py backtest-dry-run --symbol AAPL --store-path data --starting-cash 100000 --bars-limit 252`
+
+## Testing
+- Run full default suite:
+  - `uv run pytest -q`
+- Marker taxonomy:
+  - `unit`: fast, deterministic tests with no external services.
+  - `integration`: broader cross-component tests.
+  - `network`: tests requiring outbound internet access.
+- Run only network tests:
+  - `uv run pytest -m network -q`
+- Enable network-gated tests (disabled by default):
+  - `RUN_NETWORK_TESTS=1 uv run pytest -m network -q`

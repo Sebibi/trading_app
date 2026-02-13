@@ -3,7 +3,9 @@
 Personal framework for researching, backtesting, and running low-frequency (daily/weekly/monthly) trading strategies across stocks and ETFs. Python backend powers data pipelines, strategy execution, and APIs; a TypeScript frontend (e.g., Next.js/React or SvelteKit) will surface dashboards and controls.
 
 ## Current scope
-- Backend scaffolding only — no implementations yet.
+- Backend scaffolding now includes:
+  - `YFinanceSource` for historical prices and simple quotes.
+  - `ParquetDataStore` for local persistence of prices/quotes/news using pyarrow.
 - Focus on clear separation of concerns: data ingestion/storage, strategies, backtesting/live execution, and APIs.
 
 ## Proposed backend layout
@@ -28,5 +30,5 @@ A typed front-end framework such as **Next.js (React + TypeScript)** or **Svelte
 
 ## Getting started
 1. Create and activate the virtual environment (already present at `.venv` if desired).
-2. Install dev dependencies: `pip install -e .[dev]` (lock/package config to be added later).
-3. Fill in implementations for data sources, storage, strategies, and APIs following the scaffolding above.
+2. Install dev dependencies with uv: `uv venv .venv && source .venv/bin/activate && uv sync --group dev`.
+3. Fill in remaining implementations for data sources, storage, strategies, and APIs following the scaffolding above.

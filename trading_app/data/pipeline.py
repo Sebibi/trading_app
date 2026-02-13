@@ -24,15 +24,31 @@ class DataPipeline:
 
     def ingest_history(self, symbols: Sequence[str]) -> None:
         """Fetch historical bars and persist them."""
-        raise NotImplementedError("Implement ingestion flow (fetch -> normalize -> store)")
+        if not symbols:
+            return
+
+        for source in self.market_sources:
+            bars = list(source.fetch_history(symbols))
+            if bars:
+                self.store.save_prices(bars)
 
     def ingest_news(self, symbols: Sequence[str] | None = None) -> None:
         """Fetch historical news and persist it."""
-        raise NotImplementedError("Implement news ingestion")
+        if not self.news_sources:
+            return
+
+        for source in self.news_sources:
+            items = list(source.fetch_news(symbols))
+            if items:
+                self.store.save_news(items)
 
     def stream_live(self, symbols: Sequence[str]) -> Iterable[PriceBar]:
         """Pass-through live stream from the selected source(s)."""
-        raise NotImplementedError("Implement live stream fan-out")
+        if not symbols:
+            return []
+
+        for source in self.market_sources:
+            yield from source.stream_live(symbols)
 
     def list_sources(self) -> list[str]:
         """Return registered data source names."""

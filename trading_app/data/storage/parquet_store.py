@@ -28,18 +28,25 @@ class ParquetDataStore(DataStore):
         if not records:
             return
         df = pd.DataFrame(records)
-        df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
-        symbol = df.iloc[0]["symbol"]
-        path = self._prices_path(symbol)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        mode = "a" if path.exists() else "w"
-        df.to_parquet(path, engine="pyarrow", compression="snappy", index=False, append=mode == "a")
+        if "timestamp" in df:
+            df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
+
+        for symbol, sym_df in df.groupby("symbol"):
+            path = self._prices_path(symbol)
+            self._write_deduped(
+                path=path,
+                df=sym_df,
+                time_cols=["timestamp"],
+                subset=["symbol", "timestamp"],
+                sort_by=["timestamp"],
+            )
 
     def load_prices(self, symbol: str, limit: int | None = None) -> Sequence[PriceBar]:
         path = self._prices_path(symbol)
         if not path.exists():
             return []
         df = pd.read_parquet(path, engine="pyarrow")
+        df = df.sort_values("timestamp")
         if limit:
             df = df.tail(limit)
         return [
@@ -65,11 +72,15 @@ class ParquetDataStore(DataStore):
         if not records:
             return
         df = pd.DataFrame(records)
-        df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
-        path = self._quotes_path()
-        path.parent.mkdir(parents=True, exist_ok=True)
-        mode = "a" if path.exists() else "w"
-        df.to_parquet(path, engine="pyarrow", compression="snappy", index=False, append=mode == "a")
+        if "timestamp" in df:
+            df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
+        self._write_deduped(
+            path=self._quotes_path(),
+            df=df,
+            time_cols=["timestamp"],
+            subset=["symbol", "timestamp"],
+            sort_by=["symbol", "timestamp"],
+        )
 
     # ---------- News ----------
     def _news_path(self, symbol: str | None = None) -> Path:
@@ -82,15 +93,18 @@ class ParquetDataStore(DataStore):
         if not records:
             return
         df = pd.DataFrame(records)
-        df["published_at"] = pd.to_datetime(df["published_at"], utc=True)
+        if "published_at" in df:
+            df["published_at"] = pd.to_datetime(df["published_at"], utc=True)
         symbols = df["symbol"].fillna("all").unique()
         for sym in symbols:
             sym_df = df[df["symbol"].fillna("all") == sym]
             path = self._news_path(sym if sym != "all" else None)
-            path.parent.mkdir(parents=True, exist_ok=True)
-            mode = "a" if path.exists() else "w"
-            sym_df.to_parquet(
-                path, engine="pyarrow", compression="snappy", index=False, append=mode == "a"
+            self._write_deduped(
+                path=path,
+                df=sym_df,
+                time_cols=["published_at"],
+                subset=["id"],
+                sort_by=["published_at"],
             )
 
     def load_news(self, symbol: str | None = None, limit: int | None = None) -> Sequence[NewsItem]:
@@ -102,6 +116,7 @@ class ParquetDataStore(DataStore):
             else:
                 return []
         df = pd.read_parquet(path, engine="pyarrow")
+        df = df.sort_values("published_at")
         if limit:
             df = df.tail(limit)
         return [
@@ -121,3 +136,28 @@ class ParquetDataStore(DataStore):
             )
             for row in df.itertuples()
         ]
+
+    # ---------- Internal helpers ----------
+    def _write_deduped(
+        self,
+        path: Path,
+        df: pd.DataFrame,
+        time_cols: Sequence[str],
+        subset: Sequence[str],
+        sort_by: Sequence[str],
+    ) -> None:
+        """Write a dataframe to parquet with deduplication and ordering."""
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        combined = df
+        if path.exists():
+            existing = pd.read_parquet(path, engine="pyarrow")
+            combined = pd.concat([existing, df], ignore_index=True)
+
+        for col in time_cols:
+            if col in combined:
+                combined[col] = pd.to_datetime(combined[col], utc=True)
+
+        combined = combined.drop_duplicates(subset=list(subset))
+        combined = combined.sort_values(list(sort_by)).reset_index(drop=True)
+        combined.to_parquet(path, engine="pyarrow", compression="snappy", index=False)

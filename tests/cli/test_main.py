@@ -2,9 +2,13 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+import pytest
+
 from trading_app.cli.main import main
 from trading_app.data.schemas import PriceBar
 from trading_app.data.storage.parquet_store import ParquetDataStore
+
+pytestmark = pytest.mark.unit
 
 
 def test_backtest_dry_run_executes(tmp_path, capsys) -> None:

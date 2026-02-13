@@ -2,7 +2,11 @@ from __future__ import annotations
 
 from datetime import timezone
 
+import pytest
+
 from trading_app.data.sources.yfinance_source import YFinanceSource
+
+pytestmark = pytest.mark.unit
 
 
 class _FakeTicker:

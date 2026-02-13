@@ -10,9 +10,5 @@ dev = [
   "matplotlib==3.10.8",
   "tqdm==4.67.3",
   "yfinance==1.1.0",
-  "black==24.10.0",
+  "pyarrow==19.0.0",
 ]
-
-[tool.black]
-line-length = 100
-target-version = ["py311"]

@@ -7,10 +7,9 @@
 
 ## Build, Test, and Development Commands
 - Dependency manager: **uv**. Create venv (`uv venv .venv`) then install dev deps: `uv sync --group dev`.
-- Code formatting: run `uv run black .` from repo root (where `pyproject.toml` lives); prefer this over calling `black` directly (line length 100).
 - Reproducible lockfile: `uv lock --group dev` after dependency changes.
 - Run tests: `pytest` (uses `tests/`).
-- Linting not yet configured; add `ruff` (or similar) when ready and document its commands.
+- Formatting/linting not yet configured; add a formatter (e.g., `ruff format`) when ready and document its commands.
 
 ## Coding Style & Naming Conventions
 - Python 3.11+ assumed; use type hints everywhere (Protocols/dataclasses already used).

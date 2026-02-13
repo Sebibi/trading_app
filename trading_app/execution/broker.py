@@ -1,4 +1,5 @@
 """Broker/exchange interface stub."""
+
 from __future__ import annotations
 
 from typing import Iterable, Protocol

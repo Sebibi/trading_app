@@ -1,4 +1,5 @@
 """Performance metrics to evaluate strategies (placeholder)."""
+
 from __future__ import annotations
 
 from typing import Mapping, Sequence

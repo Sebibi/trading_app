@@ -1,4 +1,5 @@
 """Portfolio state models used by strategies and backtests."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

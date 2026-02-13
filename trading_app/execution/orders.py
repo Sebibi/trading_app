@@ -1,4 +1,5 @@
 """Order and execution primitives."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

@@ -1,4 +1,5 @@
 """Strategy interface for both backtests and live trading."""
+
 from __future__ import annotations
 
 from typing import Protocol, Sequence

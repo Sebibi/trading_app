@@ -1,4 +1,5 @@
 """Filesystem-backed Parquet implementation stub."""
+
 from __future__ import annotations
 
 from pathlib import Path

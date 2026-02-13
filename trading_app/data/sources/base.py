@@ -1,4 +1,5 @@
 """Abstract interfaces for pulling market and news data."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -33,7 +34,10 @@ class NewsDataSource(Protocol):
     name: str
 
     def fetch_news(
-        self, symbols: Sequence[str] | None = None, start: datetime | None = None, end: datetime | None = None
+        self,
+        symbols: Sequence[str] | None = None,
+        start: datetime | None = None,
+        end: datetime | None = None,
     ) -> Iterable[NewsItem]:
         """Yield news items for symbols in a time window."""
         ...

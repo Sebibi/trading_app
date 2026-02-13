@@ -1,6 +1,7 @@
 """Configuration object placeholders for the trading app.
 Populate these with environment or file-based settings before runtime.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

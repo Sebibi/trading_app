@@ -1,4 +1,5 @@
 """Shared data models for market and news data."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

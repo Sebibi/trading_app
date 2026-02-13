@@ -1,4 +1,5 @@
 """Coordinator for moving data from sources into storage."""
+
 from __future__ import annotations
 
 from typing import Iterable, Sequence
@@ -11,7 +12,12 @@ from trading_app.data.storage.base import DataStore
 class DataPipeline:
     """Orchestrates ingestion and normalization of market/news data."""
 
-    def __init__(self, store: DataStore, market_sources: Sequence[MarketDataSource], news_sources: Sequence[NewsDataSource] | None = None) -> None:
+    def __init__(
+        self,
+        store: DataStore,
+        market_sources: Sequence[MarketDataSource],
+        news_sources: Sequence[NewsDataSource] | None = None,
+    ) -> None:
         self.store = store
         self.market_sources = list(market_sources)
         self.news_sources = list(news_sources) if news_sources else []

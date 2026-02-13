@@ -1,5 +1,7 @@
-"""Smoke test placeholders."""
+"""Basic import smoke tests."""
+
+from trading_app.cli.main import main
 
 
-def test_placeholder() -> None:
-    assert True
+def test_cli_main_is_callable() -> None:
+    assert callable(main)

@@ -9,7 +9,6 @@
 - Dependency manager: **uv**. Create venv (`uv venv .venv`) then install dev deps: `uv sync --group dev`.
 - Reproducible lockfile: `uv lock --group dev` after dependency changes.
 - Run tests: `pytest` (uses `tests/`).
-- Formatting/linting not yet configured; add a formatter (e.g., `ruff format`) when ready and document its commands.
 
 ## Coding Style & Naming Conventions
 - Python 3.11+ assumed; use type hints everywhere (Protocols/dataclasses already used).
@@ -25,6 +24,8 @@
 
 ## Commit & Pull Request Guidelines
 - Commits: present tense, concise scope (e.g., `Add backtest engine skeleton`, `Refactor data pipeline config`).
+- Each PR description should be verbose and include: summary/context, detailed change list, rationale, testing performed (`pytest`, etc.), risks/limitations, and follow-ups.
+- Always run the local test suite before opening a PR, and include the exact test command(s) and results in the PR description.
 - Each PR should describe the change, testing performed (`pytest`, etc.), and any follow-ups. Include screenshots/gifs only when UI exists.
 - Keep unrelated changes out of the same PR; prefer small, reviewable diffs.
 

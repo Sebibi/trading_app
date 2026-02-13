@@ -7,7 +7,8 @@
 
 ## Build, Test, and Development Commands
 - Dependency manager: **uv**. Create venv (`uv venv .venv`) then install dev deps: `uv sync --group dev`.
-- Code formatting: `uv run black .` (line length 100).
+- Code formatting: run `uv run black .` from repo root (where `pyproject.toml` lives); prefer this over calling `black` directly (line length 100).
+- Reproducible lockfile: `uv lock --group dev` after dependency changes.
 - Run tests: `pytest` (uses `tests/`).
 - Linting not yet configured; add `ruff` (or similar) when ready and document its commands.
 
@@ -16,7 +17,7 @@
 - Prefer functional module boundaries over monoliths; keep files small and purpose-specific.
 - Naming: modules/files are snake_case; classes are PascalCase; interfaces marked via `Protocol`; config/value objects use `dataclass`.
 - Add concise docstrings for public classes/functions; keep comments minimal and purposeful.
-- All new Python dependencies must be added to `pyproject.toml` (dev deps in `[dependency-groups].dev`), then synced via `uv sync`.
+- All new Python dependencies must be added to `pyproject.toml` (dev deps in `[dependency-groups].dev`), then synced via `uv sync` and locked via `uv lock`.
 
 ## Testing Guidelines
 - Use `pytest`; place tests mirroring package paths (e.g., `tests/data/test_pipeline.py`).

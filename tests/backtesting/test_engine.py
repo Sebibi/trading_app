@@ -94,11 +94,17 @@ def test_engine_executes_market_buy_and_updates_equity() -> None:
     engine = BacktestEngine(strategy=_OneShotBuyStrategy())
 
     result = engine.run(bars, starting_cash=1_000.0)
+    state = result.final_state
 
-    assert result.cash == pytest.approx(0.0)
-    assert result.positions["AAPL"].quantity == pytest.approx(10.0)
-    assert result.positions["AAPL"].cost_basis == pytest.approx(100.0)
-    assert result.equity == pytest.approx(1_100.0)
+    assert state.cash == pytest.approx(0.0)
+    assert state.positions["AAPL"].quantity == pytest.approx(10.0)
+    assert state.positions["AAPL"].cost_basis == pytest.approx(100.0)
+    assert state.equity == pytest.approx(1_100.0)
+    assert result.bars_processed == 2
+    assert len(result.orders) == 1
+    assert len(result.fills) == 1
+    assert len(result.trade_log) == 1
+    assert len(result.equity_curve) == 2
 
 
 def test_engine_executes_sell_and_keeps_remaining_position() -> None:
@@ -106,11 +112,14 @@ def test_engine_executes_sell_and_keeps_remaining_position() -> None:
     engine = BacktestEngine(strategy=_BuyThenSellStrategy())
 
     result = engine.run(bars, starting_cash=1_000.0)
+    state = result.final_state
 
-    assert result.cash == pytest.approx(550.0)
-    assert result.positions["MSFT"].quantity == pytest.approx(5.0)
-    assert result.positions["MSFT"].cost_basis == pytest.approx(100.0)
-    assert result.equity == pytest.approx(1_100.0)
+    assert state.cash == pytest.approx(550.0)
+    assert state.positions["MSFT"].quantity == pytest.approx(5.0)
+    assert state.positions["MSFT"].cost_basis == pytest.approx(100.0)
+    assert state.equity == pytest.approx(1_100.0)
+    assert len(result.orders) == 2
+    assert len(result.fills) == 2
 
 
 def test_buy_and_hold_strategy_integrates_with_engine() -> None:
@@ -119,11 +128,13 @@ def test_buy_and_hold_strategy_integrates_with_engine() -> None:
     engine = BacktestEngine(strategy=strategy)
 
     result = engine.run(bars, starting_cash=1_000.0)
+    state = result.final_state
 
-    assert result.cash == pytest.approx(500.0)
-    assert result.positions["NVDA"].quantity == pytest.approx(10.0)
-    assert result.positions["NVDA"].cost_basis == pytest.approx(50.0)
-    assert result.equity == pytest.approx(1_100.0)
+    assert state.cash == pytest.approx(500.0)
+    assert state.positions["NVDA"].quantity == pytest.approx(10.0)
+    assert state.positions["NVDA"].cost_basis == pytest.approx(50.0)
+    assert state.equity == pytest.approx(1_100.0)
+    assert result.fills[0].fill_qty == pytest.approx(10.0)
 
 
 def test_sma_crossover_strategy_integrates_with_engine() -> None:
@@ -139,7 +150,9 @@ def test_sma_crossover_strategy_integrates_with_engine() -> None:
     engine = BacktestEngine(strategy=strategy)
 
     result = engine.run(bars, starting_cash=1_000.0)
+    state = result.final_state
 
-    assert "AAPL" not in result.positions
-    assert result.cash == pytest.approx(970.0)
-    assert result.equity == pytest.approx(970.0)
+    assert "AAPL" not in state.positions
+    assert state.cash == pytest.approx(970.0)
+    assert state.equity == pytest.approx(970.0)
+    assert len(result.fills) == 2

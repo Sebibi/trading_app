@@ -6,19 +6,36 @@ from collections.abc import Iterable
 from datetime import datetime
 from typing import Sequence
 
+from trading_app.backtesting.costs import (
+    CommissionModel,
+    SlippageModel,
+    ZeroCommissionModel,
+    ZeroSlippageModel,
+)
+from trading_app.backtesting.results import BacktestResult, EquityPoint, TradeRecord
 from trading_app.data.schemas import PriceBar
 from trading_app.execution.orders import Fill, Order, OrderSide, OrderType
 from trading_app.portfolio.models import Position
 from trading_app.portfolio.models import PortfolioState
-from trading_app.backtesting.results import BacktestResult, EquityPoint, TradeRecord
+from trading_app.portfolio.risk import NoOpRiskModel, RiskModel
 from trading_app.strategies.base import Strategy
 
 
 class BacktestEngine:
     """Runs strategies against historical data and tracks portfolio state."""
 
-    def __init__(self, strategy: Strategy) -> None:
+    def __init__(
+        self,
+        strategy: Strategy,
+        *,
+        risk_model: RiskModel | None = None,
+        commission_model: CommissionModel | None = None,
+        slippage_model: SlippageModel | None = None,
+    ) -> None:
         self.strategy = strategy
+        self.risk_model = risk_model or NoOpRiskModel()
+        self.commission_model = commission_model or ZeroCommissionModel()
+        self.slippage_model = slippage_model or ZeroSlippageModel()
 
     def run(
         self,
@@ -27,7 +44,7 @@ class BacktestEngine:
     ) -> BacktestResult:
         """Execute a deterministic bar-by-bar market-order backtest."""
         state = PortfolioState(cash=starting_cash, equity=starting_cash)
-        pending_orders = list(self.strategy.on_start(state))
+        pending_orders = self._validate_orders(self.strategy.on_start(state), state)
         submitted_orders: list[Order] = list(pending_orders)
         fills: list[Fill] = []
         trade_log: list[TradeRecord] = []
@@ -46,7 +63,7 @@ class BacktestEngine:
             fills.extend(executed_fills)
             trade_log.extend(executed_trades)
 
-            new_orders = self.strategy.on_bar(bar, state)
+            new_orders = self._validate_orders(self.strategy.on_bar(bar, state), state)
             submitted_orders.extend(new_orders)
             pending_orders.extend(new_orders)
             pending_orders, executed_fills, executed_trades = self._execute_orders_for_symbol(
@@ -71,6 +88,9 @@ class BacktestEngine:
             trade_log=trade_log,
             bars_processed=len(bars),
         )
+
+    def _validate_orders(self, orders: Iterable[Order], state: PortfolioState) -> list[Order]:
+        return self.risk_model.validate(list(orders), state)
 
     def _execute_orders_for_symbol(
         self,
@@ -108,59 +128,110 @@ class BacktestEngine:
         fill_price: float,
         fill_timestamp: datetime,
     ) -> tuple[Fill | None, TradeRecord | None]:
+        requested_qty = order.quantity
+        if order.side is OrderSide.SELL:
+            existing = state.positions.get(order.symbol)
+            if existing is None:
+                return None, None
+            requested_qty = min(order.quantity, existing.quantity)
+        if requested_qty <= 0:
+            return None, None
+
+        effective_fill_price = self.slippage_model.apply(order, fill_price)
+        if effective_fill_price <= 0:
+            return None, None
+        commission = max(
+            0.0,
+            self.commission_model.calculate(
+                order=order,
+                fill_qty=requested_qty,
+                fill_price=effective_fill_price,
+            ),
+        )
+
         if order.side is OrderSide.BUY:
-            filled_qty = self._apply_buy_fill(state, order.symbol, order.quantity, fill_price)
+            filled_qty = self._apply_buy_fill(
+                state,
+                order.symbol,
+                requested_qty,
+                effective_fill_price,
+                commission,
+            )
         else:
-            filled_qty = self._apply_sell_fill(state, order.symbol, order.quantity, fill_price)
+            filled_qty = self._apply_sell_fill(
+                state,
+                order.symbol,
+                requested_qty,
+                effective_fill_price,
+                commission,
+            )
         if filled_qty <= 0:
             return None, None
 
         position = state.positions.get(order.symbol)
         position_after = position.quantity if position is not None else 0.0
         return (
-            Fill(order=order, fill_price=fill_price, fill_qty=filled_qty),
+            Fill(
+                order=order,
+                fill_price=effective_fill_price,
+                fill_qty=filled_qty,
+                commission=commission,
+            ),
             TradeRecord(
                 timestamp=fill_timestamp,
                 symbol=order.symbol,
                 side=order.side,
                 quantity=filled_qty,
-                price=fill_price,
+                price=effective_fill_price,
+                commission=commission,
                 cash_after=state.cash,
                 position_after=position_after,
             ),
         )
 
     def _apply_buy_fill(
-        self, state: PortfolioState, symbol: str, quantity: float, fill_price: float
+        self,
+        state: PortfolioState,
+        symbol: str,
+        quantity: float,
+        fill_price: float,
+        commission: float,
     ) -> float:
         notional = quantity * fill_price
-        if notional > state.cash:
+        total_cost = notional + commission
+        if total_cost > state.cash:
             return 0.0
 
         existing = state.positions.get(symbol)
+        unit_cost = total_cost / quantity
         if existing is None:
             state.positions[symbol] = Position(
                 symbol=symbol,
                 quantity=quantity,
-                cost_basis=fill_price,
+                cost_basis=unit_cost,
             )
-            state.cash -= notional
+            state.cash -= total_cost
             return quantity
 
         new_quantity = existing.quantity + quantity
         new_cost_basis = (
-            existing.quantity * existing.cost_basis + quantity * fill_price
+            existing.quantity * existing.cost_basis + total_cost
         ) / new_quantity
         state.positions[symbol] = Position(
             symbol=symbol,
             quantity=new_quantity,
             cost_basis=new_cost_basis,
         )
-        state.cash -= notional
+        state.cash -= total_cost
         return quantity
 
     def _apply_sell_fill(
-        self, state: PortfolioState, symbol: str, quantity: float, fill_price: float
+        self,
+        state: PortfolioState,
+        symbol: str,
+        quantity: float,
+        fill_price: float,
+        commission: float,
     ) -> float:
         existing = state.positions.get(symbol)
         if existing is None or existing.quantity <= 0:
@@ -170,7 +241,8 @@ class BacktestEngine:
         if sell_quantity <= 0:
             return 0.0
 
-        state.cash += sell_quantity * fill_price
+        proceeds = sell_quantity * fill_price - commission
+        state.cash += proceeds
         remaining_quantity = existing.quantity - sell_quantity
         if remaining_quantity <= 0:
             del state.positions[symbol]

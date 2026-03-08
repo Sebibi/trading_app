@@ -26,6 +26,7 @@ class TradeRecord:
     side: OrderSide
     quantity: float
     price: float
+    commission: float
     cash_after: float
     position_after: float
 
